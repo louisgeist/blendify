@@ -1,0 +1,36 @@
+{
+  "segment": {
+    "field": "category",
+    "names": [
+      "Deciduous oak",
+      "Evergreen oak",
+      "Beech",
+      "Chestnut",
+      "Black locust",
+      "Maritime pine",
+      "Scotch pine",
+      "Black pine",
+      "Aleppo pine",
+      "Fir",
+      "Spruce",
+      "Larch",
+      "Douglas"
+    ],
+    "colors": [
+      "#E69F00",
+      "#56B4E9",
+      "#009E73",
+      "#F0E442",
+      "#0072B2",
+      "#D55E00",
+      "#CC79A7",
+      "#332288",
+      "#88CCEE",
+      "#44AA99",
+      "#117733",
+      "#DDCC77",
+      "#AA4499"
+    ],
+    "unknown_color": "#808080"
+  }
+}

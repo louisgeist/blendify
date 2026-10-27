@@ -109,7 +109,7 @@ def is_continuous(palette):
 
 
 # Class names that mean "no label here" rather than a real category
-VOID_NAMES = {"void", "n/a", "na", "none", "unknown", "no data", "nodata"}
+VOID_NAMES = {"void", "n/a", "na", "none", "unknown", "no data", "nodata", "outlier"}
 
 
 def void_class_indices(palette):

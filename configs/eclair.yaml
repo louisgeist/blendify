@@ -1,0 +1,41 @@
+# Shared defaults for ECLAIR aerial tiles read as Pointcept scene folders.
+# Photo RGB comes from color.npy. Intensity uses the MALIBU3D strength ramp.
+# pred joins rgb, strength and segment once pred.npy is beside them.
+extends: base.yaml
+
+data:
+  palettes: configs/palettes/lidar_strength.json
+  palette_overrides:
+    - configs/palettes/eclair.json
+    - configs/palettes/eclair_pred.json
+  default_color: rgb
+  # ~0.1 m spacing on a 100 m tile. 0.25 m spheres overlap neighbours.
+  voxel: 0.25
+  center: true
+  output_dir: null
+  cache: false
+
+render:
+  engine: CYCLES
+  n_samples: 64
+  fast_gi: true
+  ao_distance: 6.0
+  ao_bounces: 1
+
+sun:
+  energy: 3.4
+  color: [1.0, 1.0, 1.0]
+  rotation_euler: [1.1693706, 0.0, 0.7853981852531433]
+  angle: 2.5
+
+world:
+  color: [1.0, 1.0, 1.0]
+  strength: 0.40
+
+point_cloud:
+  specularity: 0.05
+  roughness: 0.4
+
+void:
+  color: [0.7686275, 0.7686275, 0.7686275]
+  alpha: 0.55

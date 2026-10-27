@@ -1,0 +1,14 @@
+# Val tile of deciduous oak. segment is a single species colour; rgb is the input.
+extends: ../pureforest.yaml
+
+data:
+  path: /data/geist/Pointcept/data/pureforest/val/Quercus_pubescens-C0-281_43_315
+  output_dir: /home/lgeist/blendify/renders/pureforest_Quercus_pubescens
+
+# Saved from renders/pureforest_Quercus_pubescens/viewer_pose.json.
+camera:
+  translation: [-21.4830452, -61.6501835, 54.5121556]
+  quaternion: [0.8693770, 0.4620344, -0.0822379, -0.1547411]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 500

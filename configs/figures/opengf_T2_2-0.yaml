@@ -1,0 +1,14 @@
+# OpenGF Test II chunk, ~157 m, both Ground and Non-ground, a few outliers.
+# The starting camera frames the inliers; outliers can sit far above them.
+extends: ../opengf.yaml
+
+data:
+  path: /data/geist/Pointcept/data/opengf/test/T2_2-0
+  output_dir: /home/lgeist/blendify/renders/opengf_T2_2-0
+
+camera:
+  translation: [-78.1381, -147.1081, 192.0322]
+  quaternion: [0.833935, 0.496433, -0.123302, -0.207130]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 800

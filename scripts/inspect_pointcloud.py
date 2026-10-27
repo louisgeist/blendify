@@ -34,7 +34,10 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("path", help="Point cloud file (.pt/.ply/.ply.gz/.npz/.las/.laz)")
+    parser.add_argument(
+        "path",
+        help="Point cloud file, or a Pointcept scene directory with coord.npy",
+    )
     parser.add_argument("--palettes", default=None, help="Palette JSON")
     parser.add_argument("--colors", nargs="*", default=None,
                         help="Keep only these colorizations")

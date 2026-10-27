@@ -5,13 +5,18 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import argparse
 import json
 import logging
+import sys
+import os.path as osp
+
+# The repo root must be importable before `blendify` and `figlib`. This fork
+# is not installed as a package; a PyPI `blendify` would be the upstream one.
+sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
 
 import bpy
 from PIL import Image
 import blender_plots as bplt
 import numpy as np
 import os
-import os.path as osp
 from videoio import VideoWriter
 import subprocess
 from scipy.interpolate import CubicSpline
@@ -20,11 +25,8 @@ from blendify import scene
 from blendify.utils.camera_trajectory import Trajectory
 from blendify.utils.bounding_box import draw_bboxes
 
-# Allow running this script from anywhere without installing anything
-import sys
-sys.path.insert(0, osp.dirname(osp.dirname(osp.abspath(__file__))))
 from figlib import (load_config, apply_overrides, require, load_point_cloud,
-                    grade, is_neutral, ALPHA_NODE_NAME)
+                     place_for_figure, grade, is_neutral, ALPHA_NODE_NAME)
 from figlib.grading import srgb_to_linear, linear_to_srgb
 from figlib.blender_material import (build_grading_chain, apply_grade, read_grade,
                                      store_layers, DEFAULT_GRADE,
@@ -448,6 +450,23 @@ def main(args):
         bpy.context.scene.cycles.diffuse_bounces = 10
         bpy.context.scene.cycles.device = 'CPU' if c_render["cpu"] else 'GPU'
         bpy.context.scene.cycles.samples = c_render["n_samples"]
+        if not c_render["cpu"]:
+            # scene.render() turns on a GPU, but stills go through
+            # bpy.ops.render and otherwise stay on the CPU.
+            prefs = bpy.context.preferences.addons["cycles"].preferences
+            prefs.refresh_devices()
+            available = {dev.type for dev in prefs.devices}
+            for mode in ("OPTIX", "CUDA", "HIP", "ONEAPI"):
+                if mode in available:
+                    prefs.compute_device_type = mode
+                    break
+            else:
+                mode = None
+            if mode is not None:
+                for dev in prefs.devices:
+                    dev.use = dev.type == mode
+                names = [dev.name for dev in prefs.devices if dev.use]
+                logger.info(f"Cycles GPU: {mode} on {names}")
 
     # Resolution
     bpy.context.scene.render.resolution_x = resolution[0]
@@ -534,8 +553,17 @@ def main(args):
     bg.inputs[0].default_value = tuple(c_world["color"]) + (1,)  # color
     bg.inputs[1].default_value = c_world["strength"]  # strength
 
-    # Read input data. Any supported format lands in the same PointCloud object
-    root = osp.dirname(data_path)
+    # Read input data. Any supported format lands in the same PointCloud object.
+    # A Pointcept scene is a directory; keep its renders out of the dataset
+    # tree by setting data.output_dir. Files still render next to themselves.
+    output_dir = c_data.get("output_dir")
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        root = output_dir
+    elif osp.isdir(data_path):
+        root = data_path
+    else:
+        root = osp.dirname(data_path)
     # Outputs are named after the CONFIG, not the data file. Several figures
     # share one point cloud (the plain tile, the network overlay, an intensity
     # comparison), and naming by data stem made them silently overwrite each
@@ -556,9 +584,11 @@ def main(args):
         cache=c_data["cache"],
         cache_dir=c_data["cache_dir"],
         log=logger.info)
-    cloud.drop_void(c_data["drop_void"], log=logger.info)
-    if c_data["center"]:
-        cloud.center()
+    place_for_figure(
+        cloud, drop_void=c_data["drop_void"], scale=c_data.get("scale"),
+        center=c_data["center"], grid_size=c_data.get("grid_size"),
+        drop_after_center=c_data.get("drop_after_center", False),
+        log=logger.info)
     cloud.subsample(c_data["subsample"], seed=c_data["seed"])
     if c_data["add_xyz"]:
         cloud.add_xyz_colorization()

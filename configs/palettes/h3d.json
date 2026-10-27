@@ -1,0 +1,33 @@
+{
+  "segment": {
+    "names": [
+      "Low Vegetation",
+      "Impervious Surface",
+      "Vehicle",
+      "Urban Furniture",
+      "Roof",
+      "Façade",
+      "Shrub",
+      "Tree",
+      "Soil or Gravel",
+      "Vertical Surface",
+      "Chimney",
+      "Void"
+    ],
+    "colors": [
+      "#B7D98A",
+      "#B0B0B0",
+      "#3B6FE0",
+      "#F2C14E",
+      "#D64545",
+      "#C48A6A",
+      "#7CB342",
+      "#2E7D32",
+      "#E6D3B3",
+      "#7E57C2",
+      "#F48FB1",
+      "#808080"
+    ],
+    "unknown_color": "#808080"
+  }
+}

@@ -1,0 +1,14 @@
+# One ~95 m cell of the test grid (row 0, col 2), not the test area.
+# The contiguous test block is configs/figures/h3d_Mar18_test.yaml.
+extends: ../h3d.yaml
+
+data:
+  path: /data/geist/Pointcept/data/h3d/test/Mar18_test_GroundTruth_0-2
+  output_dir: /home/lgeist/blendify/renders/h3d_Mar18_test_0-2
+
+camera:
+  translation: [-22.3988, -55.4412, 42.5586]
+  quaternion: [0.835652, 0.493538, -0.122583, -0.207556]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 500

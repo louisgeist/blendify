@@ -1,0 +1,15 @@
+{
+  "segment": {
+    "names": [
+      "Ground",
+      "Non-ground",
+      "Outlier"
+    ],
+    "colors": [
+      "#E6D3B3",
+      "#2E7D32",
+      "#E53935"
+    ],
+    "unknown_color": "#808080"
+  }
+}

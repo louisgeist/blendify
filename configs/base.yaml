@@ -3,7 +3,11 @@
 # Values reproduce the hardcoded defaults of the pre-YAML examples/00_custom.py.
 
 data:
-  path: null            # .pt | .ply | .ply.gz | .npz | .las | .laz
+  path: null            # .pt | .ply | .ply.gz | .npz | .las | .laz, or a
+                        # Pointcept scene directory (coord.npy + optional
+                        # color.npy / strength.npy / segment.npy / pred.npy)
+  output_dir: null      # where PNGs and the .blend go. null = next to the
+                        # file, or inside a Pointcept scene directory
   palettes: null        # palette JSON, for formats carrying raw label/scalar fields
   palette_overrides: null   # JSON/YAML patching the above without editing it
   cache: true           # cache the parsed cloud; rebuilt when source or palette changes
@@ -14,7 +18,13 @@ data:
                         # Applied to every colorization at once, so all figures
                         # of a scene keep an identical point set.
   voxel: 0.02           # sphere radius of a rendered point, in scene units
+  grid_size: null       # metres. Keep one point per voxel before rendering.
+                        # null keeps every point. Distinct from `voxel`,
+                        # which is only the sphere radius.
   center: true          # recenter on XY, drop min Z to 0
+  scale: null           # multiply coordinates before centering. PureForest
+                        # stores metres / 25; leave null when the cloud is
+                        # already in metres.
   default_color: 0_level  # which colorization drives the video / initial scene
   subsample: null       # keep at most N points (null = keep all)
   seed: 0               # subsampling seed, so figures stay reproducible

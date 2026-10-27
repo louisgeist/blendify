@@ -1,0 +1,18 @@
+# Douglas tile kept for the PureForest figure. One species per 50 m tile.
+extends: ../pureforest.yaml
+
+data:
+  path: /data/geist/Pointcept/data/pureforest/val/Pseudotsuga_menziesii-C12-336_1_167
+  output_dir: /home/lgeist/blendify/renders/pureforest_douglas
+
+# Same pose on every species tile. Each cloud is centered first.
+# Axis-aligned with the tile: the camera sits on the -Y side and looks
+# along +Y, 36.5 deg below the horizontal (same elevation family as DALES).
+# The previous oak pose was about 20 deg off that axis, so the ground
+# rectangle sat rotated in the frame.
+camera:
+  translation: [0.0, -59.7022, 56.1773]
+  quaternion: [0.892979, 0.450098, 0.0, 0.0]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 500

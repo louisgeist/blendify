@@ -5,7 +5,9 @@ colorizations. The figure script only ever sees that object, so adding support
 for a new file format is a matter of writing one reader here.
 
 Currently supported: `.pt` (the legacy dict format), `.ply` / `.ply.gz`,
-`.npz`, and `.las` / `.laz` (needs `laspy`).
+`.npz`, `.las` / `.laz` (needs `laspy`), and a Pointcept scene directory
+(a folder containing ``coord.npy`` plus any other ``*.npy``: scalars are
+palette fields, ``(N, 3)`` arrays are RGB colorizations).
 """
 import gzip
 import hashlib
@@ -19,6 +21,9 @@ from .palettes import colorize, load_palettes
 
 SUPPORTED_SUFFIXES = (".pt", ".ply", ".ply.gz", ".npz", ".las", ".laz")
 
+# Arrays a Pointcept preprocessing script may leave next to coord.npy.
+# ``pred.npy`` is not written by preprocessing; a later forward pass drops it
+# in the same folder, in the same index space as ``segment.npy``.
 # Fields that are geometry or photo colour rather than a colorizable variable
 _RESERVED = {"x", "y", "z", "red", "green", "blue", "nx", "ny", "nz",
              "intensity_normalized"}
@@ -62,6 +67,11 @@ class PointCloud:
     def names(self):
         return sorted(self.colors)
 
+    def scale(self, factor):
+        """Multiply coordinates by ``factor`` (scene units stay metres)."""
+        self.pos *= np.float32(factor)
+        return self
+
     def center(self):
         """Recenter on the XY bounding-box midpoint and drop min Z to zero.
 
@@ -104,6 +114,29 @@ class PointCloud:
             return self
         keep = np.sort(np.random.default_rng(seed).choice(len(self), n, replace=False))
         return self._select(keep)
+
+    def voxel_downsample(self, size, log=print):
+        """Keep one point per cubic voxel of edge ``size``.
+
+        The same indices are applied to every colour and raw field, so the
+        layers stay aligned. The kept point is the first one in the cloud,
+        which makes the result deterministic. ``size`` is in the cloud's
+        current units (metres, once a PureForest scale has been applied).
+        """
+        if size is None or size <= 0 or len(self) == 0:
+            return self
+        quantized = np.floor(self.pos / np.float32(size)).astype(np.int64)
+        quantized -= quantized.min(axis=0)
+        quantized = np.ascontiguousarray(quantized)
+        keys = quantized.view(
+            np.dtype((np.void, quantized.dtype.itemsize * quantized.shape[1]))
+        ).ravel()
+        _, keep = np.unique(keys, return_index=True)
+        keep.sort()
+        before = len(self)
+        self._select(keep)
+        log(f"Voxel grid {size:g} m: {before} -> {len(self)} points")
+        return self
 
     def drop_void(self, names, log=print):
         """Remove points that are void in any of the named colorizations.
@@ -239,6 +272,58 @@ def _read_ply(path, palettes=None, log=print, **kwargs):
     return PointCloud(pos, colors, void, raw, source=path)
 
 
+def _is_pointcept_dir(path):
+    """A Pointcept scene folder: preprocessing writes ``coord.npy`` here."""
+    return osp.isdir(path) and osp.isfile(osp.join(path, "coord.npy"))
+
+
+def _read_pointcept(path, log=print, **kwargs):
+    """Read a Pointcept scene directory straight off the preprocessing arrays.
+
+    No PLY export. ``color.npy`` (float RGB, 0–255 or 0–1) becomes the ``rgb``
+    colorization. Other arrays beside ``coord.npy`` are picked up by shape:
+    ``(N,)`` or ``(N, 1)`` stay raw so a palette can colorize them (``strength``,
+    ``segment``, ``pred``, …), and ``(N, 3)`` is used as an RGB colorization
+    directly (a per-point PCA, for example).
+    """
+    pos = np.asarray(np.load(osp.join(path, "coord.npy")), dtype=np.float32)
+    if pos.ndim != 2 or pos.shape[1] != 3:
+        raise ValueError(f"coord.npy must be (N, 3), got {pos.shape} in {path}")
+    n = len(pos)
+    colors, fields = {}, {}
+
+    for stem, fpath in _pointcept_arrays(path):
+        arr = np.asarray(np.load(fpath))
+        if arr.ndim == 0 or arr.size == 1:
+            # One label for the whole scene (PureForest category.npy).
+            arr = np.full(n, np.asarray(arr).reshape(-1)[0])
+        elif arr.ndim == 2 and arr.shape[1] == 1:
+            arr = arr[:, 0]
+        if arr.shape[0] != n:
+            raise ValueError(
+                f"{stem}.npy has {arr.shape[0]} rows, coord.npy has {n} ({path})")
+        if stem == "color" or (arr.ndim == 2 and arr.shape[1] == 3):
+            name = "rgb" if stem == "color" else stem
+            colors[name] = _as_uint8_rgb(arr)
+            log(f"  {name}: RGB from {stem}.npy")
+            continue
+        if arr.ndim != 1:
+            log(f"  {stem}: skipped, shape {arr.shape} is neither (N,) nor (N, 3)")
+            continue
+        fields[stem] = arr
+        log(f"  {stem}: raw field from {stem}.npy")
+
+    return PointCloud(pos, colors, {}, fields, source=path)
+
+
+def _pointcept_arrays(path):
+    """``(stem, path)`` for every ``*.npy`` in a scene folder except ``coord.npy``."""
+    names = sorted(
+        name for name in os.listdir(path)
+        if name.endswith(".npy") and name != "coord.npy")
+    return [(name[:-4], osp.join(path, name)) for name in names]
+
+
 def _read_las(path, palettes=None, log=print, **kwargs):
     try:
         import laspy
@@ -279,6 +364,39 @@ _READERS = {
 }
 
 
+def place_for_figure(cloud, drop_void=None, scale=None, center=True, grid_size=None,
+                     drop_after_center=False, log=print):
+    """Center, optionally voxelize, and drop void points.
+
+    ``drop_after_center`` keeps the frame of a camera posed on the full cloud.
+    OpenGF outliers sit below the ground; dropping them first raises min Z and
+    slides every remaining point down.
+    """
+    if drop_after_center:
+        place_cloud(cloud, scale=scale, center=center, grid_size=grid_size, log=log)
+        cloud.drop_void(drop_void, log=log)
+    else:
+        cloud.drop_void(drop_void, log=log)
+        place_cloud(cloud, scale=scale, center=center, grid_size=grid_size, log=log)
+    return cloud
+
+
+def place_cloud(cloud, scale=None, center=True, grid_size=None, log=print):
+    """Put a cloud in the frame figures render in.
+
+    ``scale`` runs first (PureForest stores metres / 25). ``grid_size`` then
+    keeps one point per voxel, and ``center`` recenters XY and drops min Z
+    to zero.
+    """
+    if scale not in (None, 1, 1.0):
+        cloud.scale(scale)
+    if grid_size:
+        cloud.voxel_downsample(grid_size, log=log)
+    if center:
+        cloud.center()
+    return cloud
+
+
 def colorize_cloud(cloud, palettes, log=print):
     """Build every colorization the palettes describe from the raw columns.
 
@@ -303,21 +421,31 @@ def colorize_cloud(cloud, palettes, log=print):
     return cloud
 
 
-def _cache_path(path, palettes_path, cache_dir, overrides_path=None):
-    """Where the parsed form of `path` gets cached.
+def _cache_fingerprint(path):
+    """Size and mtime of whatever a re-parse would have to re-read.
 
-    The key covers the source path plus the size and mtime of both the source
-    and the palette file, so editing either invalidates the cache.
+    A directory's own mtime does not move when an array inside it is
+    overwritten, so a Pointcept scene is fingerprinted from each ``*.npy``.
+    Palettes are applied after loading and are deliberately not part of this.
     """
-    # Only the SOURCE file identifies the cache. Palettes are applied after
-    # loading, so a colour change must not invalidate a parse.
+    if _is_pointcept_dir(path):
+        files = [osp.join(path, "coord.npy")] + [
+            fpath for _, fpath in _pointcept_arrays(path)]
+    else:
+        files = [path]
     parts = [osp.abspath(path)]
-    for dependency in (path,):
-        if dependency and osp.exists(dependency):
+    for dependency in files:
+        if dependency and osp.isfile(dependency):
             stat = os.stat(dependency)
-            parts.append(f"{stat.st_size}:{stat.st_mtime_ns}")
-    digest = hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
-    stem = osp.basename(path).split(".")[0]
+            parts.append(
+                f"{osp.basename(dependency)}:{stat.st_size}:{stat.st_mtime_ns}")
+    return parts
+
+
+def _cache_path(path, palettes_path, cache_dir, overrides_path=None):
+    """Where the parsed form of `path` gets cached."""
+    digest = hashlib.sha1("|".join(_cache_fingerprint(path)).encode()).hexdigest()[:12]
+    stem = osp.basename(path.rstrip("/")).split(".")[0]
     return osp.join(cache_dir, f"{stem}-{digest}.npz")
 
 
@@ -330,7 +458,8 @@ def load_point_cloud(path, palettes=None, palette_overrides=None, colors=None,
     changes. `.npz` inputs are read directly and never re-cached.
 
     Args:
-        path: input file; format is picked from the suffix.
+        path: input file, or a Pointcept scene directory. Format is picked
+            from the suffix, or from ``coord.npy`` when `path` is a directory.
         palettes: path to a palette JSON, or an already-loaded dict. Only used
             by formats that carry raw label/scalar fields.
         colors: optional list of colorization names to keep (default: all).
@@ -338,17 +467,19 @@ def load_point_cloud(path, palettes=None, palette_overrides=None, colors=None,
         cache_dir: where cached `.npz` files live.
         log: where progress messages go.
     """
+    if not osp.exists(path):
+        raise FileNotFoundError(f"No such point cloud: {path}")
+
+    pointcept = _is_pointcept_dir(path)
     lowered = path.lower()
     suffix = next(
         (s for s in sorted(_READERS, key=len, reverse=True) if lowered.endswith(s)),
         None)
-    if suffix is None:
+    if not pointcept and suffix is None:
         raise ValueError(
             f"Don't know how to read {osp.basename(path)!r}. "
-            f"Supported: {', '.join(SUPPORTED_SUFFIXES)}")
-
-    if not osp.exists(path):
-        raise FileNotFoundError(f"No such point cloud: {path}")
+            f"Supported: {', '.join(SUPPORTED_SUFFIXES)}, or a directory "
+            f"containing coord.npy")
 
     palettes_path = palettes if isinstance(palettes, str) else None
     if isinstance(palettes, str) or palettes is None:
@@ -368,7 +499,10 @@ def load_point_cloud(path, palettes=None, palette_overrides=None, colors=None,
 
     if cloud is None:
         log(f"Reading {path}")
-        cloud = _READERS[suffix](path, palettes=palettes, log=log)
+        if pointcept:
+            cloud = _read_pointcept(path, log=log)
+        else:
+            cloud = _READERS[suffix](path, palettes=palettes, log=log)
         if cached is not None:
             os.makedirs(cache_dir, exist_ok=True)
             save_npz(cloud, cached)

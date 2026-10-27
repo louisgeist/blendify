@@ -7,3 +7,4 @@ dist/
 blendify.egg-info/
 data/
 __pycache__/
+renders/

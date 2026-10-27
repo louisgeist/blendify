@@ -1,0 +1,18 @@
+# Smallest DALES test tile, kept whole (no 3x3 chunking) for a first figure.
+# Camera pulled from renders/dales_5100_54440_new/viewer_pose.json.
+# Intensity uses the MALIBU3D strength ramp; segment is the class palette;
+# pred appears once pred.npy is beside them.
+extends: ../dales.yaml
+
+data:
+  path: /data/geist/Pointcept/data/dales/test/5100_54440_new
+  output_dir: /home/lgeist/blendify/renders/dales_5100_54440_new
+  # null = every colorization present. pred joins intensity and segment
+  # as soon as pred.npy sits next to segment.npy.
+
+camera:
+  translation: [-2.4227977, 346.5616016, 194.6857736]
+  quaternion: [-0.0037428, -0.0018852, 0.4498416, 0.8930985]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 2000

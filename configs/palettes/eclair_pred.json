@@ -1,0 +1,10 @@
+{
+  "pred": {
+    "like": "segment",
+    "field": "pred"
+  },
+  "pred_sonata": {
+    "like": "segment",
+    "field": "pred_sonata"
+  }
+}

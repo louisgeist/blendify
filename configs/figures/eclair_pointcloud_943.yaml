@@ -1,0 +1,14 @@
+# One approved ECLAIR test tile, kept whole (100 m, no chunking).
+extends: ../eclair.yaml
+
+data:
+  path: /data/geist/Pointcept/data/eclair/test/pointcloud_943
+  output_dir: /home/lgeist/blendify/renders/eclair_pointcloud_943
+
+# Saved from renders/eclair_pointcloud_943/viewer_pose.json.
+camera:
+  translation: [68.7396916, -24.8366079, 62.8576071]
+  quaternion: [0.7805109, 0.3556872, 0.213184, 0.4678054]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 500

@@ -1,0 +1,20 @@
+# Whole H3D test block, the contiguous ~230 x 250 m area.
+# The on-disk test split is that cloud cut into ~95 m cells
+# (Mar18_test_GroundTruth_<row>-<col>). Those cells are concatenated here.
+# A separate strip, cells 0-5 and 0-6, sits ~300 m away and is left out.
+# The viewer subsamples for framing; the arrays themselves stay complete.
+extends: ../h3d.yaml
+
+data:
+  path: /home/lgeist/blendify/data/h3d/Mar18_test_main
+  output_dir: /home/lgeist/blendify/renders/h3d_Mar18_test
+  # Chosen after the 12 / 18 / 35 cm comparison. Grid stays 15 cm.
+  voxel: 0.18
+
+# Saved from renders/h3d_Mar18_test/viewer_pose.json.
+camera:
+  translation: [-103.0671505, -122.8054983, 90.9866642]
+  quaternion: [0.8343571, 0.4303197, -0.1579062, -0.306168]
+  fov_x_deg: 73.0
+  near: 0.1
+  far: 1200

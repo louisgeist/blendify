@@ -1,0 +1,46 @@
+# Shared defaults for OpenGF ground-filtering tiles.
+# Intensity uses the MALIBU3D strength ramp. segment is Ground / Non-ground /
+# Outlier (on-disk ids 0 / 1 / 2). pred joins them once pred.npy is present.
+extends: base.yaml
+
+data:
+  palettes: configs/palettes/lidar_strength.json
+  palette_overrides:
+    - configs/palettes/opengf.json
+    - configs/palettes/opengf_pred.json
+  default_color: strength
+  # Outlier is a real OpenGF class. Figures leave those points out.
+  # Some sit below the ground, so center on the full cloud first: dropping
+  # them before that raises min Z and slides the posed camera's view down.
+  drop_void: [segment]
+  drop_after_center: true
+  # ~0.4 m spacing on a 167 m chunk. 0.9 m spheres overlap neighbours.
+  voxel: 0.9
+  center: true
+  output_dir: null
+  cache: false
+
+render:
+  engine: CYCLES
+  n_samples: 64
+  fast_gi: true
+  ao_distance: 8.0
+  ao_bounces: 1
+
+sun:
+  energy: 3.4
+  color: [1.0, 1.0, 1.0]
+  rotation_euler: [1.1693706, 0.0, 0.7853981852531433]
+  angle: 2.5
+
+world:
+  color: [1.0, 1.0, 1.0]
+  strength: 0.40
+
+point_cloud:
+  specularity: 0.05
+  roughness: 0.4
+
+void:
+  color: [0.7686275, 0.7686275, 0.7686275]
+  alpha: 0.55
